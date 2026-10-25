@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">LOCAL / GOOGLE CLOUD READY</p>
+    <h1>把债券材料变成<br><em>可追溯的风险结论。</em></h1>
+    <p class="lede">上传 PDF 或 DOCX 后，系统自动完成原生解析、扫描件 OCR、向量化、混合检索与多 Agent 风险审阅。</p>
+  </div>
+  <div class="card create">
+  <form method="post" action="/projects">
+    <p class="eyebrow">NEW REVIEW</p>
+    <label>项目名称<input name="name" maxlength="160" placeholder="例如：华东新材 2026 年公司债" required></label>
+    <label>材料说明（可选）<textarea name="material_summary" rows="3" placeholder="材料来源、审阅范围或待核查事项"></textarea></label>
+    <button type="submit">创建尽调项目 <span>→</span></button>
+  </form>
+  <form method="post" action="/projects/demo"><button class="secondary" type="submit">加载脱敏试用材料</button></form>
+  </div>
+</section>
+
+<section class="section-head"><div><p class="eyebrow">WORKSPACE</p><h2>最近项目</h2></div></section>
+{% if projects %}
+<section class="project-grid">
+  {% for project in projects %}
+  <a class="card project-card" href="/projects/{{ project.id }}">
+    <span class="project-mark">{{ project.name[:1] }}</span>
+    <div><h3>{{ project.name }}</h3><p>{{ project.material_summary or '尚未添加材料说明' }}</p></div>
+    <small>最近更新 {{ project.last_active_at.strftime('%Y-%m-%d %H:%M') }}</small>
+  </a>
+  {% endfor %}
+</section>
+{% else %}
+<section class="empty card"><p>还没有项目。先创建一个项目，并上传一套真实或脱敏的公司债材料。</p></section>
+{% endif %}
+{% endblock %}

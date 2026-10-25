@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}公司债智能尽调工作台{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='/overrides.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a href="/" class="brand">Bond <span>Agent</span></a>
+    <p>OCR · Hybrid RAG · Multi-Agent · Evidence first</p>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+  <footer>仅用于尽调辅助核查；所有风险结论必须由项目人员复核。</footer>
+</body>
+</html>

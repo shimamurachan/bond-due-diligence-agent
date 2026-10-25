@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} · Bond Agent{% endblock %}
+{% block content %}
+<a class="back" href="/">← 返回项目列表</a>
+<section class="project-title">
+  <div><p class="eyebrow">DUE DILIGENCE PROJECT</p><h1>{{ project.name }}</h1><p>{{ project.material_summary or '未填写项目说明' }}</p></div>
+  <div class="title-actions"><form method="post" action="/projects/{{ project.id }}/reviews"><button class="primary" type="submit">运行多 Agent 审阅 <span>→</span></button></form><form method="post" action="/projects/{{ project.id }}/delete" onsubmit="return confirm('删除项目会清除全部材料、向量和审阅记录，确定继续吗？')"><button class="danger" type="submit">删除项目</button></form></div>
+</section>
+
+{% if jobs %}
+<section class="notice {% if jobs[0].status == 'failed' %}error{% endif %}" {% if jobs[0].status in ['queued','running'] %}data-refresh="true"{% endif %}>
+  <strong>{% if jobs[0].kind == 'ingest' %}材料处理{% else %}审阅任务{% endif %}：{{ jobs[0].status }}</strong>
+  {% if jobs[0].error_message %}<span>{{ jobs[0].error_message }}</span>{% else %}<span>页面会自动刷新显示最新进度。</span>{% endif %}
+</section>
+{% endif %}
+
+<section class="two-col">
+  <article class="card upload-card">
+    <p class="eyebrow">01 · MATERIALS</p><h2>上传项目材料</h2>
+    <p>支持 PDF、DOCX，单文件最大 {{ settings.max_file_size_mb }}MB。扫描 PDF 将自动执行 PaddleOCR。</p>
+    <form method="post" action="/projects/{{ project.id }}/documents" enctype="multipart/form-data">
+      <label class="file-input">选择文件<input name="file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required></label>
+      <input name="source_note" maxlength="500" placeholder="来源说明，例如：发行人提供的募集说明书">
+      <button type="submit">上传并建立索引</button>
+    </form>
+  </article>
+  <article class="card agent-card">
+    <p class="eyebrow">02 · AGENT TRACE</p><h2>审阅轨迹</h2>
+    {% if agents %}<ol class="trace">{% for agent in agents %}<li><span class="dot {{ agent.status }}"></span><div><strong>{{ agent.agent_name }}</strong><small>{{ agent.status }}{% if agent.duration_ms %} · {{ agent.duration_ms }} ms{% endif %}</small></div></li>{% endfor %}</ol>
+    {% else %}<p>索引完成后运行审阅，即可显示四个 Agent 的输入、状态和结果。</p>{% endif %}
+  </article>
+</section>
+
+<section class="section-head"><div><p class="eyebrow">MATERIAL LIBRARY</p><h2>当前项目文件</h2></div></section>
+{% if documents %}
+<section class="file-list card">
+{% for document in documents %}
+  <article><span class="file-icon">{{ document.file_name.split('.')[-1].upper() }}</span><div><strong>{{ document.file_name }}</strong><p>{{ document.source_note }} · {{ (document.size_bytes / 1024 / 1024)|round(2) }} MB</p>{% if document.parser_summary %}<small>{{ document.parser_summary }}</small>{% endif %}</div><span class="status {{ document.status }}">{{ document.status }}</span><form method="post" action="/projects/{{ project.id }}/documents/{{ document.id }}/delete" onsubmit="return confirm('删除此文件及其向量索引？已被审阅引用的文件将受到保护。')"><button class="file-delete" type="submit">删除</button></form></article>
+{% endfor %}
+</section>
+{% else %}<section class="empty card"><p>上传材料后，文件与 OCR/向量索引状态会显示在这里。</p></section>{% endif %}
+
+<section class="section-head"><div><p class="eyebrow">03 · EVIDENCE REVIEW</p><h2>风险结论{% if latest %}<small>审阅批次 {{ latest.created_at.strftime('%Y-%m-%d %H:%M') }}</small>{% endif %}</h2></div></section>
+{% if latest and latest.status == 'completed' %}
+<section class="summary card"><strong>本轮摘要</strong><p>{{ latest.summary }}</p></section>
+<section class="finding-list">
+{% for finding in findings %}
+  <article class="card finding {{ finding.severity }}">
+    <div class="finding-head"><span class="severity">{{ finding.severity }}风险</span><span class="change {{ finding.change_status }}">{{ finding.change_status }}</span></div>
+    <h3>{{ finding.title }}</h3><p class="rule">{{ finding.rule_code }}</p><blockquote>{{ finding.evidence }}</blockquote><p><strong>建议：</strong>{{ finding.recommendation }}</p>
+    {% for citation in citations[finding.id] %}<details><summary>证据：{{ citation.file_name }} · {{ citation.location }}</summary><p>{{ citation.excerpt }}</p></details>{% endfor %}
+    <form class="confirm" method="post" action="/findings/{{ finding.id }}/confirm"><select name="status"><option value="open" {% if finding.status == 'open' %}selected{% endif %}>待处理</option><option value="confirmed" {% if finding.status == 'confirmed' %}selected{% endif %}>已确认</option><option value="resolved" {% if finding.status == 'resolved' %}selected{% endif %}>已解决</option></select><input name="note" value="{{ finding.review_note }}" placeholder="人工备注"><button>保存</button></form>
+  </article>
+{% endfor %}
+</section>
+{% else %}<section class="empty card"><p>完成材料索引后运行审阅。所有风险项都会附带文件与页码级证据。</p></section>{% endif %}
+
+<section class="card question-card"><p class="eyebrow">PROJECT MEMORY</p><h2>基于项目材料追问</h2><form method="post" action="/projects/{{ project.id }}/questions"><input name="question" placeholder="例如：担保人的代偿能力是否有充分材料支持？" required><button>发送</button></form>{% for note in notes %}<p class="note"><small>{{ note.kind }}</small>{{ note.content }}</p>{% endfor %}</section>
+<script>if(document.querySelector('[data-refresh="true"]')) setTimeout(() => location.reload(), 2200);</script>
+{% endblock %}

@@ -1,0 +1,36 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: bond_agent
+      POSTGRES_USER: bond_agent
+      POSTGRES_PASSWORD: bond_agent
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bond_agent -d bond_agent"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    env_file: .env
+    environment:
+      APP_ENV: local
+      DATABASE_URL: postgresql+psycopg://bond_agent:bond_agent@db:5432/bond_agent
+      LOCAL_STORAGE_DIR: /data/uploads
+      GOOGLE_APPLICATION_CREDENTIALS: /gcloud/application_default_credentials.json
+    ports:
+      - "8000:8080"
+    volumes:
+      - ./data:/data
+      # Local-only mount: allows Vertex AI to use your Google Cloud CLI ADC
+      # credentials without copying credentials into the image or this project.
+      - ${APPDATA}/gcloud:/gcloud:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
